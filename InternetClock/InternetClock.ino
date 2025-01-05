@@ -5,15 +5,15 @@
 
 #define UTC_OFFSET 8
 #define API_UPDATE_INTERVAL_M 15
-const char* ssid =     "DXDXD";
-const char* password = "p@ssword_X";
+const char* ssid =     "<你的WiFi名称>";
+const char* password = "<你的WiFi密码>";
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
 
 const char* host = "api.seniverse.com";
-const String location = "xian";
-const String apiKey = "SvapyYFkj7EvAAqfG";
+const String location = "<你在心知天气申请的密钥>";
+const String apiKey = "<你的城市>";
 
 char hm[6];
 char s[3];
