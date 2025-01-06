@@ -4,26 +4,26 @@
 #include <ArduinoJson.h>
 
 #define UTC_OFFSET 8
-#define API_UPDATE_INTERVAL_M 15
-const char* ssid =     "<你的WiFi名称>";
-const char* password = "<你的WiFi密码>";
+#define API_UPDATE_INTERVAL_M 10
+
+//WiFi配置
+const char* ssid =     "DXDXD";
+const char* password = "p@ssword_X";
+//心知天气
+const String location = "xian";
+const String apiKey = "SvapyYFkj7EvAAqfG";
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
 
 const char* host = "api.seniverse.com";
-const String location = "<你在心知天气申请的密钥>";
-const String apiKey = "<你的城市>";
 
-char hm[6];
-char s[3];
-char ohm[6];
-char os[3];
-char ymd[11];
-char oymd[11];
+char hm[6];   char s[3];
+char ohm[6];  char os[3];
+char ymd[11]; char oymd[11];
 char wday[4];
 String ostr = "";
-String textNow = "";
+String textNow = "--";
 int temperature = 99;
 int code = 99;
 bool initial = true, flipWeather = false, flipTime = false, flipDate = false;
@@ -35,6 +35,11 @@ const uint8_t* getIconBitmap() {
     case 1: return _0;
     case 2: return _0;
     case 3: return _0;
+    case 4: return _4;
+    case 5: return _4;
+    case 6: return _4;
+    case 7: return _4;
+    case 8: return _4;
     default: return _99;
   }
 }
@@ -67,11 +72,10 @@ void updateScreen() {
     tft.drawString(str, 10, 40);
     ostr = str;
 
-    tft.fillRect(200, 0, xbmWidth, xbmHeight, TFT_BLACK);
+    tft.fillRect(200, 2, xbmWidth, xbmHeight, TFT_BLACK);
     tft.drawXBitmap(
-      200, 0, getIconBitmap(), xbmWidth, xbmHeight, TFT_ORANGE);
+      200, 2, getIconBitmap(), xbmWidth, xbmHeight, TFT_ORANGE);
   }
-
   tft.drawLine(0, 68, tft.width(), 68, 0xBDD7);
 
   if (flipTime || initial) {
@@ -111,7 +115,7 @@ void updateScreen() {
 
 void getWeather() {
   NetworkClient client;
-  if (!client.connect(host, 80)) return;
+  while (!client.connect(host, 80)) delay(5000);
 
   String url = "/v3/weather/now.json?key=" + apiKey + "&location=" + location + "&language=en&unit=c";
   client.print(
@@ -119,6 +123,14 @@ void getWeather() {
     "Host: " + String(host) + "\r\n" +
     "Connection: close\r\n\r\n");
   
+  unsigned long timeout = millis();
+  while (!client.available()) {
+    if (millis() - timeout > 5000) {
+      client.stop();
+      return;
+    }
+  }
+
   char endOfHeaders[] = "\r\n\r\n";
   if (!client.find(endOfHeaders)) {
     client.stop();
