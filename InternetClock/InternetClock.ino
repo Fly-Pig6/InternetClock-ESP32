@@ -7,11 +7,11 @@
 #define API_UPDATE_INTERVAL_M 10
 
 //WiFi配置
-const char* ssid =     "DXDXD";
-const char* password = "p@ssword_X";
+const char* ssid =     "<WiFi名字>";
+const char* password = "<WiFi密码>";
 //心知天气
-const String location = "xian";
-const String apiKey = "SvapyYFkj7EvAAqfG";
+const String location = "<城市名>";
+const String apiKey = "<心知天气APIkey>";
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
