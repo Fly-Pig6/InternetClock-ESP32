@@ -32,7 +32,7 @@ int temperature = 99;
 int code = 99;
 String follower = "--";
 
-bool initial = true, flipWeather = false, flipTime = false, flipDate = false, flipFollower = false;
+bool initial = true, weatherUpdated = false, timeUpdated = false, dateUpdated = false, followerUpdated = false;
 unsigned long targetTime = 0;
 
 const uint8_t* getIconBitmap() {
@@ -69,7 +69,7 @@ void updateScreen() {
   spr.drawString(str, 4, 3);
   spr.pushSprite(w + 20, 10);
 
-  if (flipWeather || initial) {
+  if (weatherUpdated || initial) {
     str = textNow + " / " + temperature + "C";
     tw = tft.textWidth(ostr);
     tft.fillRect(10, 40, tw, tft.fontHeight(), TFT_BLACK);
@@ -84,7 +84,7 @@ void updateScreen() {
   }
   tft.drawLine(0, 68, tft.width(), 68, 0xBDD7);
 
-  if (flipTime || initial) {
+  if (timeUpdated || initial) {
     tw = tft.textWidth(hm);
     tft.fillRect(10, 80, tw, tft.fontHeight(), TFT_BLACK);
     tft.setTextSize(8);tft.setTextDatum(TL_DATUM);
@@ -98,7 +98,7 @@ void updateScreen() {
     tft.drawString(s, w + 20, 100);
   }
 
-  if (flipDate || initial) {
+  if (dateUpdated || initial) {
     str = String(ymd) + "  " + String(wday);
     tw = tft.textWidth(str);
     tft.fillRect(10, 150, tw, tft.fontHeight(), TFT_BLACK);
@@ -109,7 +109,7 @@ void updateScreen() {
 
   tft.drawLine(0, 180, tft.width(), 180, 0xBDD7);
 
-  if (flipFollower || initial) {
+  if (followerUpdated || initial) {
     tft.fillRect(0, 180, 320, 60, TFT_BLACK);
     tft.setTextSize(2);tft.setTextDatum(TL_DATUM);
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -118,14 +118,14 @@ void updateScreen() {
   }
 
   // reset
-  flipWeather = false;
-  flipTime = false;
-  flipDate = false;
-  flipFollower = false;
+  weatherUpdated = false;
+  timeUpdated = false;
+  dateUpdated = false;
+  followerUpdated = false;
 }
 
-void sendRequest(NetworkClient *client, const char* host, String url, int port) {
-  while (!client->connect(host, port)) delay(5000);
+void sendRequest(NetworkClient *client, const char* host, String url) {
+  while (!client->connect(host, 443)) delay(5000);
   client->print(
     "GET " + url + " HTTP/1.1\r\n" +
     "Host: " + String(host) + "\r\n" +
@@ -147,9 +147,10 @@ void sendRequest(NetworkClient *client, const char* host, String url, int port) 
 }
 
 void getWeather() {
-  NetworkClient client;
+  NetworkClientSecure client;
+  client.setInsecure();
   String url = "/v3/weather/now.json?key=" + apiKey + "&location=" + location + "&language=en&unit=c";
-  sendRequest(&client, host1, url, 80);
+  sendRequest(&client, host1, url);
 
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, client);
@@ -167,7 +168,7 @@ void getFollower() {
   NetworkClientSecure client;
   client.setInsecure();
   String url = "/x/relation/stat?vmid=" + vmid;
-  sendRequest(&client, host2, url, 443);
+  sendRequest(&client, host2, url);
 
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, client);
@@ -203,10 +204,10 @@ void loop() {
   strftime(wday, 4, "%a", &timeinfo);
 
   if (strcmp(os, s) != 0) {
-    flipTime = true;
+    timeUpdated = true;
     strcpy(os, s);
     if (strcmp(oymd, ymd) != 0) {
-      flipDate = true;
+      dateUpdated = true;
       strcpy(oymd, ymd);
     }
   }
@@ -214,8 +215,8 @@ void loop() {
   if (targetTime < millis()) {
     getWeather();
     getFollower();
-    flipWeather = true;
-    flipFollower = true;
+    weatherUpdated = true;
+    followerUpdated = true;
     targetTime = millis() + 60000 * API_UPDATE_INTERVAL_M;   
   }
 
