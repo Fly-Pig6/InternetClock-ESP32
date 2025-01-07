@@ -1,4 +1,5 @@
 #include <TFT_eSPI.h>
+#include <NetworkClientSecure.h>
 #include "XBM.h"
 #include <WiFi.h>
 #include <ArduinoJson.h>
@@ -10,23 +11,28 @@
 const char* ssid =     "<WiFi名字>";
 const char* password = "<WiFi密码>";
 //心知天气
-const String location = "<城市名>";
-const String apiKey = "<心知天气APIkey>";
+const String location = "<城市名字>";
+const String apiKey = "<心知天气API>";
+const String vmid = "<B站UUID>";
 
 TFT_eSPI tft = TFT_eSPI();
 TFT_eSprite spr = TFT_eSprite(&tft);
 
-const char* host = "api.seniverse.com";
+const char* host1 = "api.seniverse.com";
+const char* host2 = "api.bilibili.com";
 
 char hm[6];   char s[3];
 char ohm[6];  char os[3];
 char ymd[11]; char oymd[11];
 char wday[4];
+
 String ostr = "";
 String textNow = "--";
 int temperature = 99;
 int code = 99;
-bool initial = true, flipWeather = false, flipTime = false, flipDate = false;
+String follower = "--";
+
+bool initial = true, flipWeather = false, flipTime = false, flipDate = false, flipFollower = false;
 unsigned long targetTime = 0;
 
 const uint8_t* getIconBitmap() {
@@ -103,39 +109,47 @@ void updateScreen() {
 
   tft.drawLine(0, 180, tft.width(), 180, 0xBDD7);
 
-  tft.setTextSize(2);tft.setTextDatum(TL_DATUM);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString("Local IP: " + WiFi.localIP().toString(), 10, 190);
+  if (flipFollower || initial) {
+    tft.fillRect(0, 180, 320, 60, TFT_BLACK);
+    tft.setTextSize(2);tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.drawString(String("Follower: ") + follower, 10, 190);
+    tft.drawXBitmap(220, 190, Bilibili_48x48, 48, 48, TFT_SKYBLUE);
+  }
 
   // reset
   flipWeather = false;
   flipTime = false;
   flipDate = false;
+  flipFollower = false;
 }
 
-void getWeather() {
-  NetworkClient client;
-  while (!client.connect(host, 80)) delay(5000);
-
-  String url = "/v3/weather/now.json?key=" + apiKey + "&location=" + location + "&language=en&unit=c";
-  client.print(
+void sendRequest(NetworkClient *client, const char* host, String url, int port) {
+  while (!client->connect(host, port)) delay(5000);
+  client->print(
     "GET " + url + " HTTP/1.1\r\n" +
     "Host: " + String(host) + "\r\n" +
     "Connection: close\r\n\r\n");
   
   unsigned long timeout = millis();
-  while (!client.available()) {
+  while (!client->available()) {
     if (millis() - timeout > 5000) {
-      client.stop();
+      client->stop();
       return;
     }
   }
 
   char endOfHeaders[] = "\r\n\r\n";
-  if (!client.find(endOfHeaders)) {
-    client.stop();
+  if (!client->find(endOfHeaders)) {
+    client->stop();
     return;
   }
+}
+
+void getWeather() {
+  NetworkClient client;
+  String url = "/v3/weather/now.json?key=" + apiKey + "&location=" + location + "&language=en&unit=c";
+  sendRequest(&client, host1, url, 80);
 
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, client);
@@ -146,6 +160,22 @@ void getWeather() {
   textNow = doc["results"][0]["now"]["text"].as<String>();
   temperature = doc["results"][0]["now"]["temperature"].as<int>();
   code = doc["results"][0]["now"]["code"].as<int>();
+  client.stop();
+}
+
+void getFollower() {
+  NetworkClientSecure client;
+  client.setInsecure();
+  String url = "/x/relation/stat?vmid=" + vmid;
+  sendRequest(&client, host2, url, 443);
+
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, client);
+  if (error) {
+    client.stop();
+    return;
+  }
+  follower = doc["data"]["follower"].as<String>();
   client.stop();
 }
 
@@ -183,7 +213,9 @@ void loop() {
 
   if (targetTime < millis()) {
     getWeather();
+    getFollower();
     flipWeather = true;
+    flipFollower = true;
     targetTime = millis() + 60000 * API_UPDATE_INTERVAL_M;   
   }
 
