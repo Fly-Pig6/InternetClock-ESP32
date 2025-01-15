@@ -8,13 +8,13 @@
 #define API_UPDATE_INTERVAL_M 10
 
 // WiFi
-const char* ssid = "ChinaNet-J6Fk";
-const char* password = "DmgZg2312";
+const char* ssid = "<你的WiFi名称>";
+const char* password = "<你的WiFi密码>";
 // 心知天气
-const String location = "xian";
-const String apiKey = "SvapyYFkj7EvAAqfG";
+const String location = "<你的城市名称>";
+const String apiKey = "<你的心知APIkey>";
 // B站
-const String vmid = "3546572166006853";
+const String vmid = "<你的B站ID>";
 
 #define WEATHER (1 << 1)
 #define TIME (1 << 2)
